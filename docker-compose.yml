@@ -1,0 +1,39 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  backend:
+    image: ghcr.io/vamsikrishna-1530/student-management-backend:latest
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      PORT: 5001
+      MONGODB_URI: mongodb://mongo:27017/student_management
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
+      JWT_EXPIRES_IN: 7d
+      NODE_ENV: production
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:8080}
+    ports:
+      - "5001:5001"
+    depends_on:
+      - mongo
+
+  frontend:
+    image: ghcr.io/vamsikrishna-1530/student-management-frontend:latest
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5001/api}
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
