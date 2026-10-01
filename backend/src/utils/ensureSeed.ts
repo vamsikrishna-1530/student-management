@@ -3,62 +3,76 @@ import { Course } from '../models/Course';
 import { Student } from '../models/Student';
 
 /**
- * On a fresh Atlas database (common after first Render deploy), create the
- * demo admin/teacher/students so the GitHub Pages login form works immediately.
- * Skips when any user already exists so production data is never overwritten.
+ * Ensure demo login accounts exist after first Render deploy.
+ * - If DB is empty: full demo dataset
+ * - Always upsert the known demo admin so GitHub Pages login works
  */
 export const ensureSeedData = async (): Promise<void> => {
+  const adminEmail = 'admin@sms.edu';
+  const existingAdmin = await User.findOne({ email: adminEmail });
+
+  if (!existingAdmin) {
+    await User.create({
+      name: 'Admin User',
+      email: adminEmail,
+      password: 'Admin@123',
+      role: 'admin',
+    });
+    console.log('Created demo admin — admin@sms.edu / Admin@123');
+  }
+
   const existing = await User.countDocuments();
-  if (existing > 0) {
-    console.log(`Seed skipped — ${existing} user(s) already present`);
+  if (existing > 1) {
+    console.log(`Seed skipped for sample data — ${existing} user(s) already present`);
     return;
   }
 
-  console.log('Empty database detected — seeding demo accounts…');
+  // Only the admin exists (just created or alone) — add sample catalog/users.
+  console.log('Seeding sample teacher, courses, and students…');
 
-  const teacher = await User.create({
-    name: 'Priya Sharma',
-    email: 'priya@sms.edu',
-    password: 'Teacher@123',
-    role: 'teacher',
-  });
+  let teacher = await User.findOne({ email: 'priya@sms.edu' });
+  if (!teacher) {
+    teacher = await User.create({
+      name: 'Priya Sharma',
+      email: 'priya@sms.edu',
+      password: 'Teacher@123',
+      role: 'teacher',
+    });
+  }
 
-  await User.create({
-    name: 'Admin User',
-    email: 'admin@sms.edu',
-    password: 'Admin@123',
-    role: 'admin',
-  });
-
-  const courses = await Course.insertMany([
-    {
-      name: 'Data Structures',
-      code: 'CSE201',
-      description: 'Arrays, linked lists, trees, graphs and complexity analysis',
-      credits: 4,
-      teacher: teacher._id,
-    },
-    {
-      name: 'Database Systems',
-      code: 'CSE301',
-      description: 'Relational models, SQL, and NoSQL fundamentals',
-      credits: 3,
-      teacher: teacher._id,
-    },
-    {
-      name: 'Web Development',
-      code: 'CSE350',
-      description: 'Full-stack web apps with MERN concepts',
-      credits: 4,
-      teacher: teacher._id,
-    },
-    {
-      name: 'Operating Systems',
-      code: 'CSE220',
-      description: 'Processes, memory, file systems and concurrency',
-      credits: 3,
-    },
-  ]);
+  const courseCount = await Course.countDocuments();
+  let courses = await Course.find();
+  if (courseCount === 0) {
+    courses = await Course.insertMany([
+      {
+        name: 'Data Structures',
+        code: 'CSE201',
+        description: 'Arrays, linked lists, trees, graphs and complexity analysis',
+        credits: 4,
+        teacher: teacher._id,
+      },
+      {
+        name: 'Database Systems',
+        code: 'CSE301',
+        description: 'Relational models, SQL, and NoSQL fundamentals',
+        credits: 3,
+        teacher: teacher._id,
+      },
+      {
+        name: 'Web Development',
+        code: 'CSE350',
+        description: 'Full-stack web apps with MERN concepts',
+        credits: 4,
+        teacher: teacher._id,
+      },
+      {
+        name: 'Operating Systems',
+        code: 'CSE220',
+        description: 'Processes, memory, file systems and concurrency',
+        credits: 3,
+      },
+    ]);
+  }
 
   const studentsData = [
     {
@@ -109,6 +123,8 @@ export const ensureSeedData = async (): Promise<void> => {
   ];
 
   for (const s of studentsData) {
+    const already = await User.findOne({ email: s.email });
+    if (already) continue;
     const user = await User.create({
       name: s.name,
       email: s.email,
@@ -124,7 +140,7 @@ export const ensureSeedData = async (): Promise<void> => {
       gpa: s.gpa,
       phone: '9876543210',
       status: 'active',
-      courses: [courses[0]._id, courses[1]._id],
+      courses: courses.slice(0, 2).map((c) => c._id),
     });
   }
 
