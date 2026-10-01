@@ -16,6 +16,21 @@ Brand name: **CampusLedger**
 - Seed data for instant demo
 - Postman collection for API testing
 
+## Frontend UI (Ant Design)
+
+Uses **Ant Design 6** + icons so Form / Table / Modal code stays short and easy to teach.
+
+```text
+frontend/src/components/
+  layout/AppShell.tsx             # sidebar shell
+  auth/AuthShell.tsx              # login/register frame
+  students/StudentFormModal.tsx   # add/edit student
+  courses/CourseFormModal.tsx     # add/edit course
+  courses/CourseCard.tsx
+pages/                            # load data + open modals only
+theme/campusTheme.ts              # CampusLedger brand tokens
+```
+
 ---
 
 ## Architecture
