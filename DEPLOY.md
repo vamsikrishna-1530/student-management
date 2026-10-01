@@ -50,8 +50,8 @@ GitHub → **Settings → Secrets and variables → Actions** → secret:
 Variables (already set if you used this guide’s defaults):
 
 - `FRONTEND_URL` = `https://vamsikrishna-1530.github.io/student-management`
-- `BACKEND_URL` = `https://student-management-api.onrender.com`
-- `VITE_API_URL` = `https://student-management-api.onrender.com/api`
+- `BACKEND_URL` = `https://student-management-api-2hvd.onrender.com`
+- `VITE_API_URL` = `https://student-management-api-2hvd.onrender.com/api`
 
 ### 3. Seed once
 
