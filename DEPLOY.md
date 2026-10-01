@@ -5,7 +5,7 @@ One workflow (**.github/workflows/publish.yml**) publishes:
 | App | Where Actions publishes it | Public URL |
 |-----|----------------------------|------------|
 | **Frontend** | GitHub Pages | https://vamsikrishna-1530.github.io/student-management/ |
-| **Backend** | Render (via deploy hook) | https://student-management-api.onrender.com |
+| **Backend** | Render (via deploy hook) | https://student-management-api-2hvd.onrender.com |
 
 > GitHub Pages can only host the static React app. A Node + Mongo API cannot run on `github.io`, so Actions deploys the API to Render’s free public URL.
 
@@ -72,8 +72,8 @@ Actions publishes:
 ## Final links
 
 - **Website:** https://vamsikrishna-1530.github.io/student-management/  
-- **API:** https://student-management-api.onrender.com  
-- **Health:** https://student-management-api.onrender.com/api/health  
+- **API:** https://student-management-api-2hvd.onrender.com  
+- **Health:** https://student-management-api-2hvd.onrender.com/api/health  
 
 ---
 

@@ -30,6 +30,20 @@ app.get('/api/health', (_req, res) => {
   res.json({ success: true, message: 'API is healthy', data: { status: 'ok' } });
 });
 
+// Friendly root so Render/browser checks on "/" are not a bare 404.
+app.get('/', (_req, res) => {
+  res.json({
+    success: true,
+    message: 'CampusLedger Student Management API',
+    data: {
+      health: '/api/health',
+      auth: '/api/auth',
+      students: '/api/students',
+      courses: '/api/courses',
+    },
+  });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/courses', courseRoutes);

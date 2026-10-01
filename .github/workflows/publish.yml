@@ -46,7 +46,7 @@ jobs:
             echo "url=${{ vars.BACKEND_URL }}/api" >> "$GITHUB_OUTPUT"
           else
             # Default expected Render API hostname after blueprint deploy
-            echo "url=https://student-management-api.onrender.com/api" >> "$GITHUB_OUTPUT"
+            echo "url=https://student-management-api-2hvd.onrender.com/api" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build frontend

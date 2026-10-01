@@ -185,7 +185,7 @@ Import `postman/CampusLedger.postman_collection.json`.
 | App | URL |
 |-----|-----|
 | **Frontend** | https://vamsikrishna-1530.github.io/student-management/ |
-| **Backend** | https://student-management-api.onrender.com |
+| **Backend** | https://student-management-api-2hvd.onrender.com |
 
 Frontend is hosted on **GitHub Pages**. Backend is published by Actions to **Render** (GitHub cannot host a Node API on `github.io`).
 
