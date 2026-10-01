@@ -1,112 +1,148 @@
 import { useEffect, useState } from 'react';
+import { Col, Row, Card, Statistic, Typography, Button, Progress, Space, Alert, Spin } from 'antd';
 import { Link } from 'react-router-dom';
+import { TeamOutlined, CheckCircleOutlined, BookOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import { studentService } from '../services/studentService';
 import { courseService } from '../services/courseService';
-import type { DashboardStats, Course } from '../types';
+import CourseCard from '../components/courses/CourseCard';
+import type { Course, DashboardStats } from '../types';
+import { getErrorMessage } from '../utils/errorMessage';
 
 const DashboardPage = () => {
   const { user } = useAuth();
   const canManage = user?.role === 'admin' || user?.role === 'teacher';
+
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
         const courseList = await courseService.list();
         setCourses(courseList.slice(0, 4));
         if (canManage) {
-          const s = await studentService.stats();
-          setStats(s);
+          setStats(await studentService.stats());
         }
-      } catch (err: unknown) {
-        const message =
-          (err as { response?: { data?: { message?: string } } })?.response?.data
-            ?.message || 'Failed to load dashboard';
-        setError(message);
+      } catch (err) {
+        setError(getErrorMessage(err, 'Failed to load dashboard'));
+      } finally {
+        setLoading(false);
       }
     };
     load();
   }, [canManage]);
 
   const maxDept =
-    stats?.byDepartment.reduce((m, d) => Math.max(m, d.count), 0) || 1;
+    stats?.byDepartment.reduce((max, item) => Math.max(max, item.count), 0) || 1;
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1>Dashboard</h1>
-          <p>Hello {user?.name} — here is your campus overview.</p>
-        </div>
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Row justify="space-between" align="middle" gutter={[16, 16]}>
+        <Col>
+          <Typography.Title level={2} style={{ marginBottom: 0 }}>
+            Dashboard
+          </Typography.Title>
+          <Typography.Text type="secondary">
+            Hello {user?.name} — here is your campus overview.
+          </Typography.Text>
+        </Col>
         {canManage && (
-          <Link className="btn btn-primary" to="/students">
-            Manage students
-          </Link>
+          <Col>
+            <Link to="/students">
+              <Button type="primary">Manage students</Button>
+            </Link>
+          </Col>
         )}
-      </div>
+      </Row>
 
-      {error && <p className="error-text">{error}</p>}
+      {error && <Alert type="error" showIcon message={error} />}
 
-      {canManage && stats && (
-        <div className="stats-grid">
-          <div className="stat-tile">
-            <span>Total students</span>
-            <strong>{stats.totalStudents}</strong>
-          </div>
-          <div className="stat-tile">
-            <span>Active students</span>
-            <strong>{stats.activeStudents}</strong>
-          </div>
-          <div className="stat-tile">
-            <span>Active courses</span>
-            <strong>{stats.totalCourses}</strong>
-          </div>
-        </div>
-      )}
-
-      <div className={`dashboard-split${canManage ? '' : ' single'}`}>
-        <section className="panel">
-          <div className="page-header" style={{ marginBottom: '0.75rem' }}>
-            <h2>Courses</h2>
-            <Link to="/courses">View all</Link>
-          </div>
-          <div className="course-grid">
-            {courses.map((c) => (
-              <article key={c._id} className="course-tile">
-                <div className="code">{c.code}</div>
-                <h3>{c.name}</h3>
-                <p>{c.description || 'No description'}</p>
-                <strong>{c.credits} credits</strong>
-              </article>
-            ))}
-            {courses.length === 0 && <p className="empty">No courses yet.</p>}
-          </div>
-        </section>
-
+      <Spin spinning={loading}>
         {canManage && stats && (
-          <section className="panel">
-            <h2>By department</h2>
-            <div className="dept-list">
-              {stats.byDepartment.map((d) => (
-                <div className="dept-row" key={d._id}>
-                  <span>{d._id}</span>
-                  <div className="bar">
-                    <span style={{ width: `${(d.count / maxDept) * 100}%` }} />
-                  </div>
-                  <strong>{d.count}</strong>
-                </div>
-              ))}
-              {stats.byDepartment.length === 0 && (
-                <p className="empty">No department data yet.</p>
-              )}
-            </div>
-          </section>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={8}>
+              <Card className="page-card">
+                <Statistic
+                  title="Total students"
+                  value={stats.totalStudents}
+                  prefix={<TeamOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} md={8}>
+              <Card className="page-card">
+                <Statistic
+                  title="Active students"
+                  value={stats.activeStudents}
+                  prefix={<CheckCircleOutlined />}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} md={8}>
+              <Card className="page-card">
+                <Statistic
+                  title="Active courses"
+                  value={stats.totalCourses}
+                  prefix={<BookOutlined />}
+                />
+              </Card>
+            </Col>
+          </Row>
         )}
-      </div>
-    </div>
+
+        <Row gutter={[16, 16]} style={{ marginTop: canManage ? 16 : 0 }}>
+          <Col xs={24} lg={canManage ? 14 : 24}>
+            <Card
+              className="page-card"
+              title="Courses"
+              extra={<Link to="/courses">View all</Link>}
+            >
+              <Row gutter={[16, 16]}>
+                {courses.map((course) => (
+                  <Col xs={24} sm={12} key={course._id}>
+                    <CourseCard course={course} />
+                  </Col>
+                ))}
+                {courses.length === 0 && (
+                  <Col span={24}>
+                    <Typography.Text type="secondary">No courses yet.</Typography.Text>
+                  </Col>
+                )}
+              </Row>
+            </Card>
+          </Col>
+
+          {canManage && stats && (
+            <Col xs={24} lg={10}>
+              <Card className="page-card" title="By department">
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                  {stats.byDepartment.map((dept) => (
+                    <div key={dept._id}>
+                      <Row justify="space-between">
+                        <Typography.Text>{dept._id}</Typography.Text>
+                        <Typography.Text strong>{dept.count}</Typography.Text>
+                      </Row>
+                      <Progress
+                        percent={Math.round((dept.count / maxDept) * 100)}
+                        showInfo={false}
+                        strokeColor="#0b6e75"
+                      />
+                    </div>
+                  ))}
+                  {stats.byDepartment.length === 0 && (
+                    <Typography.Text type="secondary">No department data yet.</Typography.Text>
+                  )}
+                </Space>
+              </Card>
+            </Col>
+          )}
+        </Row>
+      </Spin>
+    </Space>
   );
 };
 

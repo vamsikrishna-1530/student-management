@@ -1,238 +1,176 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { courseService } from '../services/courseService';
-import type { Course } from '../types';
+import { useEffect, useState } from 'react';
+import { Button, Card, Col, Input, Row, Space, Typography, App } from 'antd';
+import { PlusOutlined, ReloadOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
+import { courseService } from '../services/courseService';
+import CourseCard from '../components/courses/CourseCard';
+import CourseFormModal, {
+  type CourseFormValues,
+} from '../components/courses/CourseFormModal';
+import type { Course } from '../types';
+import { getErrorMessage } from '../utils/errorMessage';
 
-const emptyForm = {
-  name: '',
-  code: '',
-  description: '',
-  credits: 3,
-};
-
+/** Courses page = list + open modal. Form UI lives in CourseFormModal. */
 const CoursesPage = () => {
   const { user } = useAuth();
+  const { message, modal } = App.useApp();
   const canManage = user?.role === 'admin' || user?.role === 'teacher';
   const isAdmin = user?.role === 'admin';
+
   const [courses, setCourses] = useState<Course[]>([]);
   const [search, setSearch] = useState('');
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
-  const [form, setForm] = useState(emptyForm);
 
-  const load = async () => {
+  const loadCourses = async () => {
+    setLoading(true);
     try {
-      setError('');
-      const list = await courseService.list(search || undefined);
-      setCourses(list);
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message || 'Failed to load courses';
-      setError(message);
+      setCourses(await courseService.list(search || undefined));
+    } catch (err) {
+      message.error(getErrorMessage(err, 'Failed to load courses'));
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
+    loadCourses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    document.body.classList.toggle('modal-open', modalOpen);
-    return () => document.body.classList.remove('modal-open');
-  }, [modalOpen]);
-
-  const openCreate = () => {
-    setEditing(null);
-    setForm(emptyForm);
-    setModalOpen(true);
-  };
-
-  const openEdit = (course: Course) => {
-    setEditing(course);
-    setForm({
-      name: course.name,
-      code: course.code,
-      description: course.description || '',
-      credits: course.credits,
-    });
-    setModalOpen(true);
-  };
-
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (values: CourseFormValues) => {
+    setSaving(true);
     try {
       if (editing) {
         await courseService.update(editing._id, {
-          name: form.name,
-          description: form.description,
-          credits: Number(form.credits),
+          name: values.name,
+          description: values.description,
+          credits: values.credits,
         });
+        message.success('Course updated');
       } else {
         await courseService.create({
-          name: form.name,
-          code: form.code,
-          description: form.description,
-          credits: Number(form.credits),
+          name: values.name,
+          code: values.code || '',
+          description: values.description,
+          credits: values.credits,
         });
+        message.success('Course created');
       }
       setModalOpen(false);
-      await load();
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message || 'Save failed';
-      setError(message);
+      await loadCourses();
+    } catch (err) {
+      message.error(getErrorMessage(err, 'Save failed'));
+    } finally {
+      setSaving(false);
     }
   };
 
-  const onDelete = async (id: string) => {
-    if (!confirm('Deactivate this course?')) return;
-    try {
-      await courseService.remove(id);
-      await load();
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message || 'Delete failed';
-      setError(message);
-    }
+  const handleDelete = (course: Course) => {
+    modal.confirm({
+      title: 'Deactivate this course?',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          await courseService.remove(course._id);
+          message.success('Course removed');
+          await loadCourses();
+        } catch (err) {
+          message.error(getErrorMessage(err, 'Delete failed'));
+        }
+      },
+    });
   };
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1>Courses</h1>
-          <p>Browse the catalog and manage offerings.</p>
-        </div>
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Row justify="space-between" align="middle" gutter={[16, 16]}>
+        <Col>
+          <Typography.Title level={2} style={{ marginBottom: 0 }}>
+            Courses
+          </Typography.Title>
+          <Typography.Text type="secondary">
+            Browse the catalog and manage offerings.
+          </Typography.Text>
+        </Col>
         {canManage && (
-          <button className="btn btn-primary" onClick={openCreate}>
-            Add course
-          </button>
+          <Col>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setEditing(null);
+                setModalOpen(true);
+              }}
+            >
+              Add course
+            </Button>
+          </Col>
         )}
-      </div>
+      </Row>
 
-      <section className="panel">
-        <div className="toolbar">
-          <input
+      <Card className="page-card" loading={loading}>
+        <Space wrap style={{ marginBottom: 16 }}>
+          <Input.Search
             placeholder="Search courses"
+            allowClear
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onSearch={loadCourses}
+            style={{ width: 280 }}
           />
-          <button className="btn btn-ghost" onClick={load}>
+          <Button icon={<ReloadOutlined />} onClick={loadCourses}>
             Search
-          </button>
-        </div>
+          </Button>
+        </Space>
 
-        {error && <p className="error-text">{error}</p>}
-
-        <div className="course-grid">
-          {courses.map((c) => (
-            <article key={c._id} className="course-tile">
-              <div className="code">{c.code}</div>
-              <h3>{c.name}</h3>
-              <p>{c.description || 'No description provided.'}</p>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                }}
-              >
-                <strong>{c.credits} credits</strong>
-                {canManage && (
-                  <div className="row-actions">
-                    <button className="btn btn-ghost" onClick={() => openEdit(c)}>
-                      Edit
-                    </button>
-                    {isAdmin && (
-                      <button className="btn btn-danger" onClick={() => onDelete(c._id)}>
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </article>
+        <Row gutter={[16, 16]}>
+          {courses.map((course) => (
+            <Col xs={24} sm={12} lg={8} key={course._id}>
+              <CourseCard
+                course={course}
+                actions={
+                  canManage
+                    ? [
+                        <EditOutlined
+                          key="edit"
+                          onClick={() => {
+                            setEditing(course);
+                            setModalOpen(true);
+                          }}
+                        />,
+                        ...(isAdmin
+                          ? [
+                              <DeleteOutlined
+                                key="delete"
+                                onClick={() => handleDelete(course)}
+                              />,
+                            ]
+                          : []),
+                      ]
+                    : undefined
+                }
+              />
+            </Col>
           ))}
-        </div>
-        {courses.length === 0 && <p className="empty">No courses found.</p>}
-      </section>
+          {!loading && courses.length === 0 && (
+            <Col span={24}>
+              <Typography.Text type="secondary">No courses found.</Typography.Text>
+            </Col>
+          )}
+        </Row>
+      </Card>
 
-      {modalOpen && (
-        <div className="modal-backdrop" onClick={() => setModalOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <header>
-              <h2>{editing ? 'Edit course' : 'Add course'}</h2>
-              <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>
-                Close
-              </button>
-            </header>
-            <div className="modal-body">
-              <form className="form-grid" onSubmit={onSubmit}>
-                <label>
-                  Name
-                  <input
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    required
-                  />
-                </label>
-                {!editing && (
-                  <label>
-                    Code
-                    <input
-                      value={form.code}
-                      onChange={(e) => setForm({ ...form, code: e.target.value })}
-                      required
-                    />
-                  </label>
-                )}
-                <label>
-                  Credits
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={form.credits}
-                    onChange={(e) =>
-                      setForm({ ...form, credits: Number(e.target.value) })
-                    }
-                    required
-                  />
-                </label>
-                <label className="full">
-                  Description
-                  <textarea
-                    rows={3}
-                    value={form.description}
-                    onChange={(e) =>
-                      setForm({ ...form, description: e.target.value })
-                    }
-                  />
-                </label>
-                <div className="full" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                  <button className="btn btn-primary" type="submit">
-                    {editing ? 'Save changes' : 'Create course'}
-                  </button>
-                  <button
-                    className="btn btn-ghost"
-                    type="button"
-                    onClick={() => setModalOpen(false)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <CourseFormModal
+        open={modalOpen}
+        loading={saving}
+        editing={editing}
+        onCancel={() => setModalOpen(false)}
+        onSubmit={handleSave}
+      />
+    </Space>
   );
 };
 

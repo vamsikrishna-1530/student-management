@@ -1,92 +1,93 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import { Button, Form, Input, Typography, Alert, App } from 'antd';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import AuthShell from '../components/auth/AuthShell';
+import { getErrorMessage } from '../utils/errorMessage';
+
+type RegisterForm = {
+  name: string;
+  email: string;
+  password: string;
+};
 
 const RegisterPage = () => {
   const { register, token } = useAuth();
   const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { message } = App.useApp();
   const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   if (token) return <Navigate to="/" replace />;
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const onFinish = async (values: RegisterForm) => {
     setError('');
-    setSubmitting(true);
+    setLoading(true);
     try {
-      await register(name, email, password);
+      await register(values.name, values.email, values.password);
+      message.success('Account created');
       navigate('/');
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message || 'Registration failed';
-      setError(message);
+    } catch (err) {
+      setError(getErrorMessage(err, 'Registration failed'));
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <section className="auth-hero">
-        <div>
-          <div className="brand-mark" style={{ marginBottom: '1.5rem' }}>
-            CampusLedger
-          </div>
-          <h1>Join your campus workspace.</h1>
-          <p>Create a student account and explore the shared course catalog.</p>
-        </div>
-      </section>
+    <AuthShell
+      title="Join your campus workspace."
+      subtitle="Create a student account and explore the shared course catalog."
+    >
+      <div>
+        <Typography.Title level={3} style={{ marginBottom: 4 }}>
+          Create account
+        </Typography.Title>
+        <Typography.Paragraph type="secondary">
+          Self-registration creates a student role.
+        </Typography.Paragraph>
+      </div>
 
-      <section className="auth-panel">
-        <div className="auth-card">
-          <h2>Create account</h2>
-          <p className="muted">Self-registration creates a student role.</p>
+      <Form<RegisterForm> layout="vertical" onFinish={onFinish}>
+        <Form.Item
+          label="Full name"
+          name="name"
+          rules={[{ required: true, message: 'Name is required' }]}
+        >
+          <Input size="large" />
+        </Form.Item>
+        <Form.Item
+          label="Email"
+          name="email"
+          rules={[
+            { required: true, message: 'Email is required' },
+            { type: 'email', message: 'Enter a valid email' },
+          ]}
+        >
+          <Input size="large" />
+        </Form.Item>
+        <Form.Item
+          label="Password"
+          name="password"
+          rules={[
+            { required: true, message: 'Password is required' },
+            { min: 6, message: 'At least 6 characters' },
+          ]}
+        >
+          <Input.Password size="large" />
+        </Form.Item>
 
-          <form onSubmit={onSubmit}>
-            <label>
-              Full name
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              Email
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
-                required
-              />
-            </label>
-            {error && <p className="error-text">{error}</p>}
-            <button className="btn btn-primary" disabled={submitting}>
-              {submitting ? 'Creating…' : 'Register'}
-            </button>
-          </form>
+        {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} />}
 
-          <p className="muted" style={{ marginTop: '1rem' }}>
-            Already registered? <Link to="/login">Sign in</Link>
-          </p>
-        </div>
-      </section>
-    </div>
+        <Button type="primary" htmlType="submit" block size="large" loading={loading}>
+          Register
+        </Button>
+      </Form>
+
+      <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+        Already registered? <Link to="/login">Sign in</Link>
+      </Typography.Paragraph>
+    </AuthShell>
   );
 };
 
