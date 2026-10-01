@@ -74,3 +74,62 @@ Actions publishes:
 - **Website:** https://vamsikrishna-1530.github.io/student-management/  
 - **API:** https://student-management-api.onrender.com  
 - **Health:** https://student-management-api.onrender.com/api/health  
+
+---
+
+## Fix: `bad auth : authentication failed` (Atlas)
+
+This means Render reached MongoDB Atlas, but **username/password in `MONGODB_URI` is wrong**.
+
+### 1. Create / reset an Atlas database user
+
+1. [MongoDB Atlas](https://cloud.mongodb.com) → your project → **Database Access**
+2. Add user (or edit existing) with **Password** auth
+3. Prefer a simple password first (letters + numbers only) to avoid encoding issues
+4. Role: **Atlas admin** or **Read and write to any database**
+
+### 2. Allow Render to connect (Network Access)
+
+1. Atlas → **Network Access**
+2. **Add IP Address** → **Allow Access from Anywhere** → `0.0.0.0/0`
+
+### 3. Copy a fresh connection string
+
+1. Atlas → **Database** → **Connect** → **Drivers**
+2. Copy the URI, then replace `<password>` with the real password
+3. Example shape:
+
+```text
+mongodb+srv://myuser:MyPassword123@cluster0.xxxxx.mongodb.net/student_management?retryWrites=true&w=majority
+```
+
+### 4. URL-encode special characters in the password
+
+If the password has `@ # % / : ? &` etc., encode them in the URI:
+
+| Char | Encoded |
+|------|---------|
+| `@` | `%40` |
+| `#` | `%23` |
+| `%` | `%25` |
+| `/` | `%2F` |
+| `:` | `%3A` |
+| `?` | `%3F` |
+| `&` | `%26` |
+
+Example: password `p@ss#1` → user part `myuser:p%40ss%231@cluster...`
+
+### 5. Set it on Render (do not commit this)
+
+1. Render → `student-management-api` → **Environment**
+2. Set `MONGODB_URI` to the full URI (no quotes, no spaces)
+3. **Save** → **Manual Deploy → Deploy latest commit**
+
+### 6. Quick local check (optional)
+
+```bash
+cd backend
+MONGODB_URI='mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/student_management' npm run seed
+```
+
+If seed works locally with the same URI, paste that exact value into Render.
