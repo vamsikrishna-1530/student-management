@@ -1,8 +1,8 @@
 name: Deploy
 
-# Builds Docker images and publishes them to GitHub Container Registry (GHCR).
-# Optional SSH deploy runs when repository variable ENABLE_SSH_DEPLOY=true
-# and secrets DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY are set.
+# 1) Build & publish Docker images to GHCR (always)
+# 2) Trigger Render redeploy via deploy hooks (when secrets exist)
+#    → Public URLs on Render free tier
 
 on:
   push:
@@ -12,6 +12,7 @@ on:
 permissions:
   contents: read
   packages: write
+  deployments: write
 
 jobs:
   build-and-push:
@@ -61,6 +62,8 @@ jobs:
         run: |
           if [ -n "${{ vars.VITE_API_URL }}" ]; then
             echo "url=${{ vars.VITE_API_URL }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ vars.BACKEND_URL }}" ]; then
+            echo "url=${{ vars.BACKEND_URL }}/api" >> "$GITHUB_OUTPUT"
           else
             echo "url=http://localhost:5001/api" >> "$GITHUB_OUTPUT"
           fi
@@ -87,8 +90,67 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-    name: Deploy to server
+  deploy-render:
+    name: Deploy to Render (public URL)
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.FRONTEND_URL }}
+    steps:
+      - name: Trigger Render backend deploy
+        id: backend
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK_BACKEND secret is not set."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK"
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
+          echo "Backend deploy hook triggered"
+
+      - name: Trigger Render frontend deploy
+        id: frontend
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK_FRONTEND secret is not set."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK"
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
+          echo "Frontend deploy hook triggered"
+
+      - name: Deployment URLs
+        run: |
+          {
+            echo "## Public deployment URLs"
+            echo ""
+            if [ -n "${{ vars.FRONTEND_URL }}" ]; then
+              echo "- **Frontend:** ${{ vars.FRONTEND_URL }}"
+            else
+              echo "- **Frontend:** set repo variable \`FRONTEND_URL\` after first Render deploy"
+            fi
+            if [ -n "${{ vars.BACKEND_URL }}" ]; then
+              echo "- **Backend:** ${{ vars.BACKEND_URL }}"
+            else
+              echo "- **Backend:** set repo variable \`BACKEND_URL\` after first Render deploy"
+            fi
+            echo ""
+            echo "One-time setup: see [DEPLOY.md](../blob/main/DEPLOY.md)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}" ] || [ -z "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}" ]; then
+            echo "::notice::Render hooks missing — follow DEPLOY.md to create Render services and add secrets. Until then there is no public URL."
+          fi
+
+  deploy-ssh:
+    name: Deploy to VPS (optional)
     needs: build-and-push
     runs-on: ubuntu-latest
     if: ${{ vars.ENABLE_SSH_DEPLOY == 'true' }}
@@ -106,7 +168,6 @@ jobs:
               DEPLOY_DIR="$HOME/student-management"
             fi
             cd "$DEPLOY_DIR"
-            # Use a PAT with read:packages as GHCR_TOKEN for private images.
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             docker compose up -d --remove-orphans

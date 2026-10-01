@@ -178,27 +178,24 @@ Import `postman/CampusLedger.postman_collection.json`.
 | Workflow | When | What it does |
 |----------|------|----------------|
 | `CI` | Push / PR to `main` | Installs deps, builds backend + frontend |
-| `Deploy` | Push to `main` (or manual) | Builds Docker images and pushes to GHCR |
+| `Deploy` | Push to `main` (or manual) | Pushes Docker images to GHCR + triggers Render deploy hooks |
 
-Images published:
+### Public URL (Render)
+
+Follow **[DEPLOY.md](./DEPLOY.md)** once. After setup, the live app is typically:
+
+- Frontend: `https://student-management-ui.onrender.com`
+- Backend: `https://student-management-api.onrender.com`
+
+GitHub secrets required for Actions → Render:
+
+- `RENDER_DEPLOY_HOOK_BACKEND`
+- `RENDER_DEPLOY_HOOK_FRONTEND`
+
+### Docker images (GHCR)
 
 - `ghcr.io/vamsikrishna-1530/student-management-backend:latest`
 - `ghcr.io/vamsikrishna-1530/student-management-frontend:latest`
-
-### Optional SSH deploy
-
-Set repository **variable** `ENABLE_SSH_DEPLOY=true` and these **secrets**:
-
-| Secret | Purpose |
-|--------|---------|
-| `DEPLOY_HOST` | Server hostname/IP |
-| `DEPLOY_USER` | SSH user |
-| `DEPLOY_SSH_KEY` | Private SSH key |
-| `DEPLOY_PATH` | App directory on server (optional) |
-
-Optional **variable**: `VITE_API_URL` (production API base URL baked into the frontend image).
-
-On the server, keep `docker-compose.yml` and run the same stack after images are pulled.
 
 ### Local Docker
 

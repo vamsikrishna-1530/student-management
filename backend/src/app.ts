@@ -9,10 +9,17 @@ import courseRoutes from './routes/courseRoutes';
 
 const app = express();
 
-// CORS allows the React Vite app (different port) to call this API.
+// CORS allows the React app (local Vite and/or Render UI) to call this API.
 app.use(
   cors({
-    origin: env.clientUrl,
+    origin: (origin, callback) => {
+      // Allow non-browser clients (Postman, server health checks) with no Origin.
+      if (!origin || env.clientOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
   })
 );
