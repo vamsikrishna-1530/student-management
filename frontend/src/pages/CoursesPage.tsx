@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { courseService } from '../services/courseService';
 import type { Course } from '../types';
 import { useAuth } from '../context/AuthContext';
