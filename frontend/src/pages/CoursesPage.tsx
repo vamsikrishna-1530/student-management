@@ -39,6 +39,11 @@ const CoursesPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    document.body.classList.toggle('modal-open', modalOpen);
+    return () => document.body.classList.remove('modal-open');
+  }, [modalOpen]);
+
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
@@ -160,61 +165,70 @@ const CoursesPage = () => {
 
       {modalOpen && (
         <div className="modal-backdrop" onClick={() => setModalOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <header>
               <h2>{editing ? 'Edit course' : 'Add course'}</h2>
               <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>
                 Close
               </button>
             </header>
-            <form className="form-grid" onSubmit={onSubmit}>
-              <label>
-                Name
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  required
-                />
-              </label>
-              {!editing && (
+            <div className="modal-body">
+              <form className="form-grid" onSubmit={onSubmit}>
                 <label>
-                  Code
+                  Name
                   <input
-                    value={form.code}
-                    onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
                   />
                 </label>
-              )}
-              <label>
-                Credits
-                <input
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={form.credits}
-                  onChange={(e) =>
-                    setForm({ ...form, credits: Number(e.target.value) })
-                  }
-                  required
-                />
-              </label>
-              <label className="full">
-                Description
-                <textarea
-                  rows={3}
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                />
-              </label>
-              <div className="full">
-                <button className="btn btn-primary" type="submit">
-                  {editing ? 'Save changes' : 'Create course'}
-                </button>
-              </div>
-            </form>
+                {!editing && (
+                  <label>
+                    Code
+                    <input
+                      value={form.code}
+                      onChange={(e) => setForm({ ...form, code: e.target.value })}
+                      required
+                    />
+                  </label>
+                )}
+                <label>
+                  Credits
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={form.credits}
+                    onChange={(e) =>
+                      setForm({ ...form, credits: Number(e.target.value) })
+                    }
+                    required
+                  />
+                </label>
+                <label className="full">
+                  Description
+                  <textarea
+                    rows={3}
+                    value={form.description}
+                    onChange={(e) =>
+                      setForm({ ...form, description: e.target.value })
+                    }
+                  />
+                </label>
+                <div className="full" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <button className="btn btn-primary" type="submit">
+                    {editing ? 'Save changes' : 'Create course'}
+                  </button>
+                  <button
+                    className="btn btn-ghost"
+                    type="button"
+                    onClick={() => setModalOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

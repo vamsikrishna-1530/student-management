@@ -67,7 +67,7 @@ const DashboardPage = () => {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: canManage ? '1.2fr 0.8fr' : '1fr', gap: '1rem' }}>
+      <div className={`dashboard-split${canManage ? '' : ' single'}`}>
         <section className="panel">
           <div className="page-header" style={{ marginBottom: '0.75rem' }}>
             <h2>Courses</h2>

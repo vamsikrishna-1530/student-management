@@ -57,6 +57,11 @@ const StudentsPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    document.body.classList.toggle('modal-open', modalOpen);
+    return () => document.body.classList.remove('modal-open');
+  }, [modalOpen]);
+
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
@@ -222,156 +227,161 @@ const StudentsPage = () => {
 
       {modalOpen && (
         <div className="modal-backdrop" onClick={() => setModalOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <header>
               <h2>{editing ? 'Edit student' : 'Add student'}</h2>
               <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>
                 Close
               </button>
             </header>
-            <form className="form-grid" onSubmit={onSubmit}>
-              <label>
-                Name
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  required
-                />
-              </label>
-              {!editing && (
+            <div className="modal-body">
+              <form className="form-grid" onSubmit={onSubmit}>
                 <label>
-                  Email
+                  Name
                   <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
                     required
                   />
                 </label>
-              )}
-              {!editing && (
+                {!editing && (
+                  <label>
+                    Email
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      required
+                    />
+                  </label>
+                )}
+                {!editing && (
+                  <label>
+                    Temp password
+                    <input
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    />
+                  </label>
+                )}
                 <label>
-                  Temp password
+                  Roll number
                   <input
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    value={form.rollNumber}
+                    onChange={(e) => setForm({ ...form, rollNumber: e.target.value })}
+                    required
+                    disabled={!!editing}
                   />
                 </label>
-              )}
-              <label>
-                Roll number
-                <input
-                  value={form.rollNumber}
-                  onChange={(e) => setForm({ ...form, rollNumber: e.target.value })}
-                  required
-                  disabled={!!editing}
-                />
-              </label>
-              <label>
-                Department
-                <input
-                  value={form.department}
-                  onChange={(e) => setForm({ ...form, department: e.target.value })}
-                  required
-                />
-              </label>
-              <label>
-                Year
-                <input
-                  type="number"
-                  min={1}
-                  max={5}
-                  value={form.year}
-                  onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}
-                  required
-                />
-              </label>
-              <label>
-                Semester
-                <input
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={form.semester}
-                  onChange={(e) =>
-                    setForm({ ...form, semester: Number(e.target.value) })
-                  }
-                  required
-                />
-              </label>
-              <label>
-                Phone
-                <input
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </label>
-              <label>
-                GPA
-                <input
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  max={10}
-                  value={form.gpa}
-                  onChange={(e) => setForm({ ...form, gpa: e.target.value })}
-                />
-              </label>
-              {editing && (
                 <label>
-                  Status
+                  Department
+                  <input
+                    value={form.department}
+                    onChange={(e) => setForm({ ...form, department: e.target.value })}
+                    required
+                  />
+                </label>
+                <label>
+                  Year
+                  <input
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={form.year}
+                    onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}
+                    required
+                  />
+                </label>
+                <label>
+                  Semester
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={form.semester}
+                    onChange={(e) =>
+                      setForm({ ...form, semester: Number(e.target.value) })
+                    }
+                    required
+                  />
+                </label>
+                <label>
+                  Phone
+                  <input
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  />
+                </label>
+                <label>
+                  GPA
+                  <input
+                    type="number"
+                    step="0.1"
+                    min={0}
+                    max={10}
+                    value={form.gpa}
+                    onChange={(e) => setForm({ ...form, gpa: e.target.value })}
+                  />
+                </label>
+                {editing && (
+                  <label>
+                    Status
+                    <select
+                      value={form.status}
+                      onChange={(e) => setForm({ ...form, status: e.target.value })}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="graduated">Graduated</option>
+                      <option value="suspended">Suspended</option>
+                    </select>
+                  </label>
+                )}
+                <label className="full">
+                  Address
+                  <textarea
+                    rows={2}
+                    value={form.address}
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  />
+                </label>
+                <label className="full">
+                  Courses
+                  <span style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 400 }}>
+                    Hold Ctrl/Cmd to select multiple
+                  </span>
                   <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
+                    multiple
+                    value={form.courses}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        courses: Array.from(e.target.selectedOptions).map((o) => o.value),
+                      })
+                    }
+                    style={{ minHeight: 120 }}
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="graduated">Graduated</option>
-                    <option value="suspended">Suspended</option>
+                    {courses.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.code} — {c.name}
+                      </option>
+                    ))}
                   </select>
                 </label>
-              )}
-              <label className="full">
-                Address
-                <textarea
-                  rows={2}
-                  value={form.address}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
-                />
-              </label>
-              <label className="full">
-                Courses
-                <select
-                  multiple
-                  value={form.courses}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      courses: Array.from(e.target.selectedOptions).map((o) => o.value),
-                    })
-                  }
-                  style={{ minHeight: 100 }}
-                >
-                  {courses.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.code} — {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="full" style={{ display: 'flex', gap: '0.75rem' }}>
-                <button className="btn btn-primary" type="submit">
-                  {editing ? 'Save changes' : 'Create student'}
-                </button>
-                <button
-                  className="btn btn-ghost"
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+                <div className="full" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <button className="btn btn-primary" type="submit">
+                    {editing ? 'Save changes' : 'Create student'}
+                  </button>
+                  <button
+                    className="btn btn-ghost"
+                    type="button"
+                    onClick={() => setModalOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
