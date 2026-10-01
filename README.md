@@ -180,9 +180,19 @@ Import `postman/CampusLedger.postman_collection.json`.
 | `CI` | Push / PR to `main` | Installs deps, builds backend + frontend |
 | `Deploy` | Push to `main` (or manual) | Pushes Docker images to GHCR + triggers Render deploy hooks |
 
-### Public URL (Render)
+### Public website link (GitHub Pages)
 
-Follow **[DEPLOY.md](./DEPLOY.md)** once. After setup, the live app is typically:
+After the **Deploy GitHub Pages** workflow succeeds:
+
+**https://vamsikrishna-1530.github.io/student-management/**
+
+(Also shown under repo → **Settings → Pages**, and in the Actions run summary.)
+
+> Login/API need a live backend. Set repo variable `VITE_API_URL` (e.g. your Render API `…/api`) so the Pages site can call it.
+
+### Public URL (Render — optional full hosting)
+
+Follow **[DEPLOY.md](./DEPLOY.md)** once. After setup, typical URLs:
 
 - Frontend: `https://student-management-ui.onrender.com`
 - Backend: `https://student-management-api.onrender.com`
