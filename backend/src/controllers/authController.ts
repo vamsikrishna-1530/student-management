@@ -3,10 +3,10 @@ import { body } from 'express-validator';
 import { AuthRequest } from '../middleware/auth';
 import * as authService from '../services/authService';
 import { sendSuccess } from '../utils/apiResponse';
-import { ensureSeedData } from '../utils/ensureSeed';
+import { syncOrgShowcase } from '../utils/ensureSeed';
+import { env } from '../config/env';
+import { AppError } from '../utils/AppError';
 
-// Controller layer receives HTTP and delegates business logic to services.
-// Keeping these separate makes each layer easier to test and maintain.
 export const register = async (
   req: AuthRequest,
   res: Response,
@@ -47,18 +47,44 @@ export const me = async (
   }
 };
 
-// Safe to call after deploy: creates demo admin only when missing.
-export const bootstrapDemo = async (
+/** Public app config for the frontend (registration policy, org name). */
+export const getPublicConfig = async (
   _req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    await ensureSeedData();
-    sendSuccess(res, 'Demo accounts ensured', {
-      admin: 'admin@sms.edu',
-      password: 'Admin@123',
+    sendSuccess(res, 'Config fetched', {
+      orgName: env.orgName,
+      allowPublicRegister: env.allowPublicRegister,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Admin-only: refresh official org showcase data.
+ * Body { reset: true } wipes DB first — use carefully in workshops.
+ */
+export const syncOrgDatabase = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (req.user?.role !== 'admin') {
+      throw new AppError('Only admin can sync the org database', 403, 'FORBIDDEN');
+    }
+    const reset = Boolean(req.body?.reset);
+    const result = await syncOrgShowcase({ reset });
+    sendSuccess(
+      res,
+      reset
+        ? 'Org database reset to official showcase data'
+        : 'Org showcase data synced',
+      result
+    );
   } catch (err) {
     next(err);
   }

@@ -1,148 +1,136 @@
 import { User } from '../models/User';
 import { Course } from '../models/Course';
 import { Student } from '../models/Student';
+import {
+  ORG_ADMIN,
+  ORG_COURSES,
+  ORG_META,
+  ORG_STUDENTS,
+  ORG_TEACHER,
+  ORG_EMAILS,
+} from '../data/orgShowcase';
+
+type SyncOptions = {
+  /** Wipe non-org / all collections, then install only official showcase data. */
+  reset?: boolean;
+};
+
+const upsertUser = async (input: {
+  name: string;
+  email: string;
+  password: string;
+  role: 'admin' | 'teacher' | 'student';
+}) => {
+  const email = input.email.toLowerCase();
+  let user = await User.findOne({ email }).select('+password');
+  if (!user) {
+    user = await User.create({
+      name: input.name,
+      email,
+      password: input.password,
+      role: input.role,
+    });
+    return user;
+  }
+
+  user.name = input.name;
+  user.role = input.role;
+  // Keep password stable for workshop logins unless you intentionally reset DB.
+  await user.save();
+  return user;
+};
 
 /**
- * Ensure demo login accounts exist after first Render deploy.
- * - If DB is empty: full demo dataset
- * - Always upsert the known demo admin so GitHub Pages login works
+ * Maintain the Atlas database as the official organization showcase DB.
+ * - Upserts admin, teacher, courses, and demo students
+ * - Optional reset removes test/random accounts so demos stay clean
  */
-export const ensureSeedData = async (): Promise<void> => {
-  const adminEmail = 'admin@sms.edu';
-  const existingAdmin = await User.findOne({ email: adminEmail });
-
-  if (!existingAdmin) {
-    await User.create({
-      name: 'Admin User',
-      email: adminEmail,
-      password: 'Admin@123',
-      role: 'admin',
-    });
-    console.log('Created demo admin — admin@sms.edu / Admin@123');
-  }
-
-  const existing = await User.countDocuments();
-  if (existing > 1) {
-    console.log(`Seed skipped for sample data — ${existing} user(s) already present`);
-    return;
-  }
-
-  // Only the admin exists (just created or alone) — add sample catalog/users.
-  console.log('Seeding sample teacher, courses, and students…');
-
-  let teacher = await User.findOne({ email: 'priya@sms.edu' });
-  if (!teacher) {
-    teacher = await User.create({
-      name: 'Priya Sharma',
-      email: 'priya@sms.edu',
-      password: 'Teacher@123',
-      role: 'teacher',
-    });
-  }
-
-  const courseCount = await Course.countDocuments();
-  let courses = await Course.find();
-  if (courseCount === 0) {
-    courses = await Course.insertMany([
-      {
-        name: 'Data Structures',
-        code: 'CSE201',
-        description: 'Arrays, linked lists, trees, graphs and complexity analysis',
-        credits: 4,
-        teacher: teacher._id,
-      },
-      {
-        name: 'Database Systems',
-        code: 'CSE301',
-        description: 'Relational models, SQL, and NoSQL fundamentals',
-        credits: 3,
-        teacher: teacher._id,
-      },
-      {
-        name: 'Web Development',
-        code: 'CSE350',
-        description: 'Full-stack web apps with MERN concepts',
-        credits: 4,
-        teacher: teacher._id,
-      },
-      {
-        name: 'Operating Systems',
-        code: 'CSE220',
-        description: 'Processes, memory, file systems and concurrency',
-        credits: 3,
-      },
+export const syncOrgShowcase = async (
+  options: SyncOptions = {}
+): Promise<{ org: string; users: number; courses: number; students: number }> => {
+  if (options.reset) {
+    console.log('Resetting database to official org showcase…');
+    await Promise.all([
+      Student.deleteMany({}),
+      Course.deleteMany({}),
+      User.deleteMany({}),
     ]);
+  } else {
+    // Remove accidental test signups that are NOT part of the org dataset.
+    const strayUsers = await User.find({
+      email: { $nin: [...ORG_EMAILS] },
+    });
+    if (strayUsers.length > 0) {
+      const ids = strayUsers.map((u) => u._id);
+      await Student.deleteMany({ user: { $in: ids } });
+      await User.deleteMany({ _id: { $in: ids } });
+      console.log(`Removed ${strayUsers.length} non-org test user(s)`);
+    }
   }
 
-  const studentsData = [
-    {
-      name: 'Arjun Reddy',
-      email: 'arjun@student.edu',
-      roll: 'CSE2024001',
-      dept: 'Computer Science',
-      year: 2,
-      sem: 3,
-      gpa: 8.6,
-    },
-    {
-      name: 'Sneha Patel',
-      email: 'sneha@student.edu',
-      roll: 'CSE2024002',
-      dept: 'Computer Science',
-      year: 2,
-      sem: 3,
-      gpa: 9.1,
-    },
-    {
-      name: 'Rahul Mehta',
-      email: 'rahul@student.edu',
-      roll: 'ECE2023015',
-      dept: 'Electronics',
-      year: 3,
-      sem: 5,
-      gpa: 7.8,
-    },
-    {
-      name: 'Ananya Iyer',
-      email: 'ananya@student.edu',
-      roll: 'CSE2023010',
-      dept: 'Computer Science',
-      year: 3,
-      sem: 5,
-      gpa: 8.9,
-    },
-    {
-      name: 'Vikram Singh',
-      email: 'vikram@student.edu',
-      roll: 'MECH2022012',
-      dept: 'Mechanical',
-      year: 4,
-      sem: 7,
-      gpa: 7.2,
-    },
-  ];
+  console.log(`Syncing org showcase: ${ORG_META.name}`);
 
-  for (const s of studentsData) {
-    const already = await User.findOne({ email: s.email });
-    if (already) continue;
-    const user = await User.create({
+  await upsertUser(ORG_ADMIN);
+  const teacher = await upsertUser(ORG_TEACHER);
+
+  const courseDocs = [];
+  for (const course of ORG_COURSES) {
+    const doc = await Course.findOneAndUpdate(
+      { code: course.code },
+      {
+        name: course.name,
+        code: course.code,
+        description: course.description,
+        credits: course.credits,
+        teacher: teacher._id,
+        isActive: true,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    courseDocs.push(doc);
+  }
+
+  const enrolled = courseDocs.slice(0, 2).map((c) => c!._id);
+
+  for (const s of ORG_STUDENTS) {
+    const user = await upsertUser({
       name: s.name,
       email: s.email,
-      password: 'Student@123',
+      password: s.password,
       role: 'student',
     });
-    await Student.create({
-      user: user._id,
-      rollNumber: s.roll,
-      department: s.dept,
-      year: s.year,
-      semester: s.sem,
-      gpa: s.gpa,
-      phone: '9876543210',
-      status: 'active',
-      courses: courses.slice(0, 2).map((c) => c._id),
-    });
+
+    await Student.findOneAndUpdate(
+      { rollNumber: s.roll },
+      {
+        user: user._id,
+        rollNumber: s.roll,
+        department: s.dept,
+        year: s.year,
+        semester: s.sem,
+        gpa: s.gpa,
+        phone: '9876543210',
+        status: 'active',
+        courses: enrolled,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
   }
 
-  console.log('Demo seed complete — admin@sms.edu / Admin@123');
+  const [users, courses, students] = await Promise.all([
+    User.countDocuments(),
+    Course.countDocuments({ isActive: true }),
+    Student.countDocuments(),
+  ]);
+
+  console.log(
+    `Org DB ready — admin@sms.edu / Admin@123 | users=${users} courses=${courses} students=${students}`
+  );
+
+  return { org: ORG_META.name, users, courses, students };
+};
+
+/** Startup hook: keep official org records present and strip stray test signups. */
+export const ensureSeedData = async (): Promise<void> => {
+  await syncOrgShowcase({ reset: false });
 };

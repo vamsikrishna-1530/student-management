@@ -1,7 +1,17 @@
 import api from './api';
 import type { AuthResponse, ApiResponse, User } from '../types';
 
+export type PublicConfig = {
+  orgName: string;
+  allowPublicRegister: boolean;
+};
+
 export const authService = {
+  getConfig: async () => {
+    const { data } = await api.get<ApiResponse<PublicConfig>>('/auth/config');
+    return data.data;
+  },
+
   register: async (payload: {
     name: string;
     email: string;
@@ -24,6 +34,14 @@ export const authService = {
 
   me: async () => {
     const { data } = await api.get<ApiResponse<User>>('/auth/me');
+    return data.data;
+  },
+
+  /** Admin: refresh official org showcase records (optional full reset). */
+  syncOrgDb: async (reset = false) => {
+    const { data } = await api.post<
+      ApiResponse<{ org: string; users: number; courses: number; students: number }>
+    >('/auth/sync-org-db', { reset });
     return data.data;
   },
 };

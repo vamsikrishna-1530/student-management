@@ -22,6 +22,15 @@ export const registerUser = async (input: {
   password: string;
   role?: UserRole;
 }) => {
+  // Org showcase DB: block random public signups unless explicitly enabled.
+  if (!env.allowPublicRegister) {
+    throw new AppError(
+      'Public registration is disabled. Ask an admin to add students from the Students page.',
+      403,
+      'REGISTER_DISABLED'
+    );
+  }
+
   const exists = await User.findOne({ email: input.email.toLowerCase() });
   if (exists) {
     throw new AppError('Email already registered', 409, 'EMAIL_EXISTS');

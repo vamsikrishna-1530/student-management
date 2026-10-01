@@ -21,6 +21,10 @@ services:
         generateValue: true
       - key: MONGODB_URI
         sync: false
-      # Allow the GitHub Pages site to call this API
       - key: CLIENT_URL
         value: https://vamsikrishna-1530.github.io,http://localhost:5173
+      # Official classroom org DB — no public self-signup pollution
+      - key: ALLOW_PUBLIC_REGISTER
+        value: "false"
+      - key: ORG_NAME
+        value: CampusLedger Demo College

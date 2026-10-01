@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import * as authController from '../controllers/authController';
 import { validate } from '../middleware/validate';
-import { protect } from '../middleware/auth';
+import { protect, authorize } from '../middleware/auth';
 
 const router = Router();
+
+router.get('/config', authController.getPublicConfig);
 
 router.post(
   '/register',
@@ -21,6 +23,12 @@ router.post(
 
 router.get('/me', protect, authController.me);
 
-router.post('/bootstrap-demo', authController.bootstrapDemo);
+// Admin refreshes the official org showcase DB used in classroom demos.
+router.post(
+  '/sync-org-db',
+  protect,
+  authorize('admin'),
+  authController.syncOrgDatabase
+);
 
 export default router;

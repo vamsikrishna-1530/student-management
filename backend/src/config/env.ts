@@ -18,4 +18,8 @@ export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   clientUrl: rawClientUrl,
   clientOrigins: rawClientUrl.split(',').map((o) => o.trim()).filter(Boolean),
+  // Production showcase DB: keep public self-signup off so demos stay clean.
+  allowPublicRegister:
+    (process.env.ALLOW_PUBLIC_REGISTER || 'false').toLowerCase() === 'true',
+  orgName: process.env.ORG_NAME || 'CampusLedger Demo College',
 };
