@@ -3,6 +3,7 @@ import { body } from 'express-validator';
 import { AuthRequest } from '../middleware/auth';
 import * as authService from '../services/authService';
 import { sendSuccess } from '../utils/apiResponse';
+import { ensureSeedData } from '../utils/ensureSeed';
 
 // Controller layer receives HTTP and delegates business logic to services.
 // Keeping these separate makes each layer easier to test and maintain.
@@ -41,6 +42,23 @@ export const me = async (
   try {
     const user = await authService.getProfile(req.user!.id);
     sendSuccess(res, 'Profile fetched', user);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Safe to call after deploy: creates demo admin only when missing.
+export const bootstrapDemo = async (
+  _req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    await ensureSeedData();
+    sendSuccess(res, 'Demo accounts ensured', {
+      admin: 'admin@sms.edu',
+      password: 'Admin@123',
+    });
   } catch (err) {
     next(err);
   }

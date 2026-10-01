@@ -21,4 +21,6 @@ router.post(
 
 router.get('/me', protect, authController.me);
 
+router.post('/bootstrap-demo', authController.bootstrapDemo);
+
 export default router;
