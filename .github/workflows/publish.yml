@@ -2,7 +2,7 @@ name: Publish Full Stack
 
 # Publishes BOTH apps from GitHub Actions:
 #   Frontend → GitHub Pages  → https://vamsikrishna-1530.github.io/student-management/
-#   Backend  → Render (hook) → https://student-management-api.onrender.com
+#   Backend  → Render (hook) → https://student-management-api-2hvd.onrender.com
 #   Images   → GHCR
 
 on:
@@ -122,7 +122,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: ${{ vars.BACKEND_URL || 'https://student-management-api.onrender.com' }}
+      url: ${{ vars.BACKEND_URL || 'https://student-management-api-2hvd.onrender.com' }}
     steps:
       - name: Trigger Render API deploy
         id: hook
@@ -144,7 +144,7 @@ jobs:
               echo "4. Set GitHub variable \`BACKEND_URL\` to your Render API URL"
               echo "5. Re-run this workflow"
               echo ""
-              echo "Expected API URL: **https://student-management-api.onrender.com**"
+              echo "Expected API URL: **https://student-management-api-2hvd.onrender.com**"
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
@@ -157,7 +157,7 @@ jobs:
         run: |
           BACKEND_URL="${{ vars.BACKEND_URL }}"
           if [ -z "$BACKEND_URL" ]; then
-            BACKEND_URL="https://student-management-api.onrender.com"
+            BACKEND_URL="https://student-management-api-2hvd.onrender.com"
           fi
           {
             echo "## Backend (Render via GitHub Actions)"
