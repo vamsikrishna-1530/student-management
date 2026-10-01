@@ -17,12 +17,19 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const url = String(error.config?.url || '');
+    // Login/register 401 means bad credentials — do not hard-redirect the SPA.
+    const isCredentialRequest =
+      url.includes('/auth/login') || url.includes('/auth/register');
+
+    if (status === 401 && !isCredentialRequest) {
       localStorage.removeItem('sms_token');
       localStorage.removeItem('sms_user');
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
-      }
+      // HashRouter on GitHub Pages: keep the /student-management/ base path.
+      const base = import.meta.env.BASE_URL || '/';
+      const normalized = base.endsWith('/') ? base : `${base}/`;
+      window.location.href = `${normalized}#/login`;
     }
     return Promise.reject(error);
   }
