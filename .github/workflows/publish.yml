@@ -1,0 +1,168 @@
+name: Publish Full Stack
+
+# Publishes BOTH apps from GitHub Actions:
+#   Frontend → GitHub Pages  → https://vamsikrishna-1530.github.io/student-management/
+#   Backend  → Render (hook) → https://student-management-api.onrender.com
+#   Images   → GHCR
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  packages: write
+  deployments: write
+
+concurrency:
+  group: publish-full-stack
+  cancel-in-progress: true
+
+jobs:
+  publish-frontend:
+    name: Publish frontend (GitHub Pages)
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Resolve API URL for UI build
+        id: api
+        run: |
+          if [ -n "${{ vars.VITE_API_URL }}" ]; then
+            echo "url=${{ vars.VITE_API_URL }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ vars.BACKEND_URL }}" ]; then
+            echo "url=${{ vars.BACKEND_URL }}/api" >> "$GITHUB_OUTPUT"
+          else
+            # Default expected Render API hostname after blueprint deploy
+            echo "url=https://student-management-api.onrender.com/api" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_BASE: /student-management/
+          VITE_API_URL: ${{ steps.api.outputs.url }}
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Frontend URL
+        run: |
+          {
+            echo "## Frontend (GitHub Pages)"
+            echo ""
+            echo "- **Site:** https://vamsikrishna-1530.github.io/student-management/"
+            echo "- **Deploy URL:** ${{ steps.deployment.outputs.page_url }}"
+            echo "- **API used in build:** ${{ steps.api.outputs.url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish-backend-image:
+    name: Publish backend image (GHCR)
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name
+        id: image
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
+          echo "backend=ghcr.io/${OWNER}/${REPO}-backend" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ steps.image.outputs.backend }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  publish-backend:
+    name: Publish backend (Render public URL)
+    needs: publish-backend-image
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.BACKEND_URL || 'https://student-management-api.onrender.com' }}
+    steps:
+      - name: Trigger Render API deploy
+        id: hook
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "## Backend (needs one-time Render setup)"
+              echo ""
+              echo "GitHub cannot host a persistent Node/Mongo API on github.io."
+              echo "This workflow publishes the backend through **Render** via a deploy hook."
+              echo ""
+              echo "### Do this once"
+              echo "1. Open: https://render.com/deploy?repo=https://github.com/vamsikrishna-1530/student-management"
+              echo "2. Set \`MONGODB_URI\` (Atlas) and \`CLIENT_URL=https://vamsikrishna-1530.github.io\`"
+              echo "3. Copy API **Deploy Hook** → GitHub secret \`RENDER_DEPLOY_HOOK_BACKEND\`"
+              echo "4. Set GitHub variable \`BACKEND_URL\` to your Render API URL"
+              echo "5. Re-run this workflow"
+              echo ""
+              echo "Expected API URL: **https://student-management-api.onrender.com**"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          curl -fsS -X POST "$HOOK"
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
+
+      - name: Backend URL
+        if: steps.hook.outputs.skipped == 'false'
+        run: |
+          BACKEND_URL="${{ vars.BACKEND_URL }}"
+          if [ -z "$BACKEND_URL" ]; then
+            BACKEND_URL="https://student-management-api.onrender.com"
+          fi
+          {
+            echo "## Backend (Render via GitHub Actions)"
+            echo ""
+            echo "- **API:** ${BACKEND_URL}"
+            echo "- **Health:** ${BACKEND_URL}/api/health"
+            echo "- **Image:** ${{ needs.publish-backend-image.outputs.image }}:latest"
+          } >> "$GITHUB_STEP_SUMMARY"

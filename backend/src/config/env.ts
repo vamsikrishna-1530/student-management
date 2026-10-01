@@ -5,7 +5,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // CLIENT_URL may be a single origin or comma-separated list for prod + local.
-const rawClientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+// Default includes GitHub Pages origin used by the Actions publish workflow.
+const rawClientUrl =
+  process.env.CLIENT_URL ||
+  'http://localhost:5173,https://vamsikrishna-1530.github.io';
 
 export const env = {
   port: Number(process.env.PORT) || 5001,

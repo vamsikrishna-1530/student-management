@@ -177,35 +177,20 @@ Import `postman/CampusLedger.postman_collection.json`.
 
 | Workflow | When | What it does |
 |----------|------|----------------|
-| `CI` | Push / PR to `main` | Installs deps, builds backend + frontend |
-| `Deploy` | Push to `main` (or manual) | Pushes Docker images to GHCR + triggers Render deploy hooks |
+| `CI` | Push / PR to `main` | Builds backend + frontend |
+| `Publish Full Stack` | Push to `main` | Publishes **both** apps |
 
-### Public website link (GitHub Pages)
+### Public links (from GitHub Actions)
 
-After the **Deploy GitHub Pages** workflow succeeds:
+| App | URL |
+|-----|-----|
+| **Frontend** | https://vamsikrishna-1530.github.io/student-management/ |
+| **Backend** | https://student-management-api.onrender.com |
 
-**https://vamsikrishna-1530.github.io/student-management/**
+Frontend is hosted on **GitHub Pages**. Backend is published by Actions to **Render** (GitHub cannot host a Node API on `github.io`).
 
-(Also shown under repo → **Settings → Pages**, and in the Actions run summary.)
-
-> Login/API need a live backend. Set repo variable `VITE_API_URL` (e.g. your Render API `…/api`) so the Pages site can call it.
-
-### Public URL (Render — optional full hosting)
-
-Follow **[DEPLOY.md](./DEPLOY.md)** once. After setup, typical URLs:
-
-- Frontend: `https://student-management-ui.onrender.com`
-- Backend: `https://student-management-api.onrender.com`
-
-GitHub secrets required for Actions → Render:
-
-- `RENDER_DEPLOY_HOOK_BACKEND`
-- `RENDER_DEPLOY_HOOK_FRONTEND`
-
-### Docker images (GHCR)
-
-- `ghcr.io/vamsikrishna-1530/student-management-backend:latest`
-- `ghcr.io/vamsikrishna-1530/student-management-frontend:latest`
+One-time backend connect + secret: see **[DEPLOY.md](./DEPLOY.md)**  
+Deploy button: https://render.com/deploy?repo=https://github.com/vamsikrishna-1530/student-management
 
 ### Local Docker
 
